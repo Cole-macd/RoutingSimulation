@@ -7,7 +7,7 @@ import graph.Node;
 public class GraphHelpers {
     private static final double R = 6372.8;
     
-    public double getDistance(Node from, Node to) {
+    public static double getDistance(Node from, Node to) {
         // Use Haversine distance formula
         
         double d_lat = Math.toRadians(to.getLatitude() - from.getLatitude());

@@ -9,6 +9,7 @@ public class Graph {
 	public Edge[] edges;
 	
 	public void createGraph(){
+		//THESE LATITUDE/LONGITUDE VALUES ARE INCORRECT
     	Node n0 = new Node("New York", "0", -79.0662, 43.08342);	//0
     	Node n1 = new Node("Moncton", "1", -64.8018, 46.11594);		//3
     	Node n2 = new Node("Edmundsten", "2", -68.32512, 47.3737);	//5

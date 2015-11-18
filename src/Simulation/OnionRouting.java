@@ -27,4 +27,8 @@ public class OnionRouting {
     public void setNodes(Node[] nodes) {
         this.nodes = nodes;
     }
+    
+    public static void main(String[] args){
+    	System.out.println("hi");
+    }
 }

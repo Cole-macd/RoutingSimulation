@@ -25,24 +25,82 @@ public class Graph {
     	
     	Edge e0a = new Edge(n0, n7, linkSpeed);		//edge 0-10
     	Edge e0b = new Edge(n7, n0, linkSpeed);
+    	n0.addLink(e0a);
+    	n0.addLink(e0b);
+    	n7.addLink(e0a);
+    	n7.addLink(e0b);
     	Edge e1a = new Edge(n0, n8, linkSpeed);		//edge 0-11
     	Edge e1b = new Edge(n8, n0, linkSpeed);
+    	n0.addLink(e1a);
+    	n0.addLink(e1b);
+    	n8.addLink(e1a);
+    	n8.addLink(e1b);
     	Edge e2a = new Edge(n1, n9, linkSpeed);		//edge 3-12
     	Edge e2b = new Edge(n9, n1, linkSpeed);
+    	n1.addLink(e2a);
+    	n1.addLink(e2b);
+    	n9.addLink(e2a);
+    	n9.addLink(e2b);
     	Edge e3a = new Edge(n1, n2, linkSpeed);		//edge 3-5
     	Edge e3b = new Edge(n2, n1, linkSpeed);
+    	n1.addLink(e3a);
+    	n1.addLink(e3b);
+    	n2.addLink(e3a);
+    	n2.addLink(e3b);
     	Edge e4a = new Edge(n2, n3, linkSpeed);		//edge 5-6
     	Edge e4b = new Edge(n3, n2, linkSpeed);
+    	n2.addLink(e4a);
+    	n2.addLink(e4b);
+    	n3.addLink(e4a);
+    	n3.addLink(e4b);
     	Edge e5a = new Edge(n3, n4, linkSpeed);		//edge 6-7
     	Edge e5b = new Edge(n4, n3, linkSpeed);
+    	n3.addLink(e5a);
+    	n3.addLink(e5b);
+    	n4.addLink(e5a);
+    	n4.addLink(e5b);
     	Edge e6a = new Edge(n4, n5, linkSpeed);		//edge 7-8
     	Edge e6b = new Edge(n5, n4, linkSpeed);
+    	n4.addLink(e6a);
+    	n4.addLink(e6b);
+    	n5.addLink(e6a);
+    	n5.addLink(e6b);
     	Edge e7a = new Edge(n4, n7, linkSpeed); 	//edge 7-10
     	Edge e7b = new Edge(n7, n4, linkSpeed);
+    	n4.addLink(e7a);
+    	n4.addLink(e7b);
+    	n7.addLink(e7a);
+    	n7.addLink(e7b);
     	Edge e8a = new Edge(n5, n6, linkSpeed);		//edge 8-9
     	Edge e8b = new Edge(n6, n5, linkSpeed);
+    	n5.addLink(e8a);
+    	n5.addLink(e8b);
+    	n6.addLink(e8a);
+    	n6.addLink(e8b);
     	Edge e9a = new Edge(n6, n7, linkSpeed);		//edge 9-10
     	Edge e9b = new Edge(n7, n6, linkSpeed);
+    	n6.addLink(e9a);
+    	n6.addLink(e9b);
+    	n7.addLink(e9a);
+    	n7.addLink(e9b);
+    	Edge e10a = new Edge(n2, n6, linkSpeed);
+    	Edge e10b = new Edge(n6, n2, linkSpeed);
+    	n2.addLink(e10a);
+    	n2.addLink(e10b);
+    	n6.addLink(e10a);
+    	n6.addLink(e10b);
+    	Edge e11a = new Edge(n2, n0, linkSpeed);
+    	Edge e11b = new Edge(n0, n2, linkSpeed);
+    	n2.addLink(e11a);
+    	n2.addLink(e11b);
+    	n0.addLink(e11a);
+    	n0.addLink(e11b);
+    	Edge e12a = new Edge(n2, n8, linkSpeed);
+    	Edge e12b = new Edge(n8, n2, linkSpeed);
+    	n2.addLink(e12a);
+    	n2.addLink(e12b);
+    	n8.addLink(e12a);
+    	n8.addLink(e12b);
     	
     	int numNodes = 10;
     	nodes = new Node[numNodes];
@@ -57,7 +115,7 @@ public class Graph {
     	nodes[8] = n8;
     	nodes[9] = n9;
 
-    	int numEdges = 20;
+    	int numEdges = 26;
     	edges = new Edge[numEdges];
     	
     	edges[0] = e0a;
@@ -80,5 +138,11 @@ public class Graph {
     	edges[17] = e7b;
     	edges[18] = e8b;
     	edges[19] = e9b;
+    	edges[20] = e10a;
+    	edges[21] = e10b;
+    	edges[22] = e11a;
+    	edges[23] = e11b;
+    	edges[24] = e12a;
+    	edges[25] = e12b;
 	}
 }

@@ -2,9 +2,11 @@ package graph;
 
 import java.util.ArrayList;
 
-public class Node {
+public class Node implements Comparable<Node> {
     private double longitude;
     private double latitude;
+    public double minDistance = Double.POSITIVE_INFINITY;
+    public Node previousNode;
     private String key;
     private String name;
     private ArrayList<Edge> links;
@@ -17,8 +19,17 @@ public class Node {
         this.links = new ArrayList<Edge>();
     }
     
+    public int compareTo(Node other){
+    	return Double.compare(minDistance, other.minDistance);
+    }
+    
     public void addLink(Edge link) {
         this.links.add(link);
+    }
+    
+    public Edge[] getLinks(){
+    	Edge[] edgeList = new Edge[links.size()];
+    	return links.toArray(edgeList);
     }
     
     public double getLongitude() {

@@ -15,7 +15,13 @@ public class RoutingSimulation {
 	public static void main(String[] args){
 		graph = new Graph();
 		graph.createGraph();
-		
+		/*for(int i=0; i < graph.edges.length; i++){
+			Node source = graph.edges[i].getFrom();
+			Node dest = graph.edges[i].getTo();
+			System.out.println("Distance between " + source.getName() + " to " +
+							   dest.getName() + " is " + GraphHelpers.getDistance(source, dest));
+		}
+		*/
 		System.out.println("Running shortest path, choose starting node:");
 		for(int i=0; i < graph.nodes.length; i++){
 			System.out.println(i + ". " + graph.nodes[i].getName());
@@ -28,6 +34,9 @@ public class RoutingSimulation {
 		
 		System.out.println("Sending message from " + sourceNode.getName() + " to " +
 						   destNode.getName());
+		
+		ShortestPath sp = new ShortestPath();
+		sp.startSimulation(sourceNode, destNode);
 	}
 	
 	public static int getIndexFromUser(String prompt){

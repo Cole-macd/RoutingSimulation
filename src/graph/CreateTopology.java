@@ -5,7 +5,7 @@ import graph.Edge;
 // what are we doing here????
 public class CreateTopology {
     public Node[] createNodes() {
-    	//test comment
+    	//test comment 2
         Node[] nodes = new Node[0];
         return nodes;
     }

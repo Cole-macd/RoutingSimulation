@@ -2,15 +2,96 @@ package graph;
 
 import graph.Node;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import graph.Edge;
 
 public class Graph {
 	public Node[] nodes;
 	public Edge[] edges;
+
 	
 	public void createGraph(){
+		Map<Integer, Node> nodeMap = new HashMap<Integer, Node>();
+		ArrayList<Node> tempNodes = new ArrayList<Node>();
+		ArrayList<Edge> tempEdges = new ArrayList<Edge>();
+		
+		//add node objects
+		File cityFile = new File("./src/Cities.txt");
+		try (BufferedReader br = new BufferedReader(new FileReader(cityFile))) {
+		    String line;
+		    while ((line = br.readLine()) != null) {
+		        String[] elements = line.split(" ");
+		        List<Integer> edgeArrayList = new ArrayList<>();
+		        
+		        //add the integer keys of nodes connected
+		        for(int i=4; i < elements.length; i++){
+		        	edgeArrayList.add(Integer.parseInt(elements[i]));
+		        }
+		        
+		        //convert array list to list to store in node
+		        Integer[] edgeList = new Integer[edgeArrayList.size()];
+		        edgeList = edgeArrayList.toArray(edgeList);
+		        Node temp = new Node(Integer.parseInt(elements[0]), elements[1], 
+		        					 Double.parseDouble(elements[2]), Double.parseDouble(elements[3]),
+		        					 edgeList);
+		        
+		        //eventual nodes variable, needs to be array list during generation
+		        tempNodes.add(temp);
+		        
+		        //dict of node keys to node objects, to add edges later
+		        nodeMap.put(Integer.parseInt(elements[0]), temp);
+		    }
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		//store in class variable
+		this.nodes = new Node[tempNodes.size()];
+		this.nodes = tempNodes.toArray(this.nodes);
+		
+		int linkSpeed = 40000000;
+		
+		//once all node objects created, can add edge objects
+		for(int i=0; i < this.nodes.length; i++){
+			//for each node, add one edge object for each adjacency
+			Integer[] currentNodeNeighbors = this.nodes[i].getEdgeKeys();
+			Node currentNode = this.nodes[i];
+			for(int j=0; j < currentNodeNeighbors.length; j++){
+				Node destNode = nodeMap.get(currentNodeNeighbors[j]);
+				Edge tempEdge = new Edge(currentNode, destNode, linkSpeed);
+				tempEdges.add(tempEdge);
+				currentNode.addEdgeObject(tempEdge);
+			}
+		}
+		
+		this.edges = new Edge[tempEdges.size()];
+		this.edges = tempEdges.toArray(this.edges);
+		for(int i=0; i < this.nodes.length; i++){
+			Node n = this.nodes[i];
+			Edge[] tempEdgeList = n.getEdgeObjects();
+			System.out.println("Node " + n.getName() + ":");
+			for(int j=0; j < tempEdgeList.length; j++){
+				System.out.println("Edge to " + tempEdgeList[j].getTo().getName());
+			}
+			System.out.println("\n");
+		}
+		
+		
+		//Map<String, List<String>> map = new HashMap<String, List<String>>();
+		//format = "city name", {"key", "longitude", "latitude", "attached city1","ac2"....}
+		//map.put("Vancouver", ("-79","42"));
 		//THESE LATITUDE/LONGITUDE VALUES ARE INCORRECT
-    	Node n0 = new Node("New York", "0", -79.0662, 43.08342);	//0
+    	/*Node n0 = new Node("New York", "0", -79.0662, 43.08342);	//0
     	Node n1 = new Node("Moncton", "1", -64.8018, 46.11594);		//3
     	Node n2 = new Node("Edmundsten", "2", -68.32512, 47.3737);	//5
     	Node n3 = new Node("Quebec", "3", -71.21454, 46.81228);		//6
@@ -143,6 +224,6 @@ public class Graph {
     	edges[22] = e11a;
     	edges[23] = e11b;
     	edges[24] = e12a;
-    	edges[25] = e12b;
+    	edges[25] = e12b;*/
 	}
 }

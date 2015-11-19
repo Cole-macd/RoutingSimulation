@@ -7,29 +7,35 @@ public class Node implements Comparable<Node> {
     private double latitude;
     public double minDistance = Double.POSITIVE_INFINITY;
     public Node previousNode;
-    private String key;
+    private int key;
     private String name;
-    private ArrayList<Edge> links;
+    private ArrayList<Edge> outgoingEdgeObjects;
+    private Integer[] outgoingEdgeKeys;
     
-    public Node(String name, String key, double longitude, double latitude) {
+    public Node(int key, String name, double latitude, double longitude, Integer[] edges) {
         this.name = name;
         this.setKey(key);
         this.longitude = longitude;
         this.latitude = latitude;
-        this.links = new ArrayList<Edge>();
+        this.outgoingEdgeObjects = new ArrayList<Edge>();
+        this.outgoingEdgeKeys = edges;
     }
     
     public int compareTo(Node other){
     	return Double.compare(minDistance, other.minDistance);
     }
     
-    public void addLink(Edge link) {
-        this.links.add(link);
+    public Integer[] getEdgeKeys(){
+    	return this.outgoingEdgeKeys;
     }
     
-    public Edge[] getLinks(){
-    	Edge[] edgeList = new Edge[links.size()];
-    	return links.toArray(edgeList);
+    public void addEdgeObject(Edge link) {
+        this.outgoingEdgeObjects.add(link);
+    }
+    
+    public Edge[] getEdgeObjects(){
+    	Edge[] edgeList = new Edge[outgoingEdgeObjects.size()];
+    	return outgoingEdgeObjects.toArray(edgeList);
     }
     
     public double getLongitude() {
@@ -56,11 +62,11 @@ public class Node implements Comparable<Node> {
         this.name = name;
     }
 
-    public String getKey() {
+    public int getKey() {
         return key;
     }
 
-    public void setKey(String key) {
+    public void setKey(int key) {
         this.key = key;
     }
 }

@@ -14,21 +14,24 @@ public class ShortestPath {
 	public void startSimulation(Node sourceNode, Node destNode){
 		computePathsFromSource(sourceNode);
 		Node[] shortestPath = getShortestPath(destNode);
-		/*System.out.println("Shortest path from " + sourceNode.getName() + " to " + destNode.getName());
+		System.out.println("\nShortest path from " + sourceNode.getName() + " to " + destNode.getName() + ":");
 		for(Node p: shortestPath){
 			System.out.print(p.getName() + "(" + p.getKey() + "), ");
-		}*/
+		}
+		System.out.println("\n");
 		sendPacket(shortestPath, "This is my message to transmit");
 	}
 	
 	public void sendPacket(Node[] pathList, String message){
 		int messageSizeBytes = 0;
+		int messageOverheadBytes = 32;
 		try {
 			final byte[] utf8Bytes = message.getBytes("UTF-8");
 			messageSizeBytes = utf8Bytes.length;
 		} catch (UnsupportedEncodingException e) {
 			messageSizeBytes = message.length();
 		}
+		messageSizeBytes += messageOverheadBytes;
 		
 		for(int i=0; i < pathList.length-1; i++){
 			Node currentNode = pathList[i];
@@ -51,7 +54,7 @@ public class ShortestPath {
 	}
 	
 	public Edge getNextEdge(Node source, Node dest){
-		Edge[] sourceEdges = source.getLinks();
+		Edge[] sourceEdges = source.getEdgeObjects();
 		for(int i=0; i < sourceEdges.length; i++){
 			if(sourceEdges[i].getTo() == dest){
 				return sourceEdges[i];
@@ -80,7 +83,7 @@ public class ShortestPath {
 		while(!nodeQ.isEmpty()){
 			Node u = nodeQ.poll();
 			
-			for (Edge e : u.getLinks()){
+			for (Edge e : u.getEdgeObjects()){
 				Node v = e.getTo();
 				double weight = GraphHelpers.getDistance(u, v);
 				double distanceThroughU = u.minDistance + weight;

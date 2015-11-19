@@ -7,14 +7,14 @@
 6 Denver 11.3 11.4 4 5 7
 7 Chicago 11.3 11.4 6 8 9
 8 Boston 11.3 11.4 7 11 12 13 14
-9 Washington 11.3 11.4 7 10
+9 Washington?DC 11.3 11.4 7 10
 10 Philadelphia 11.3 11.4 9 11
-11 NewYork 11.3 11.4 8 10 14
+11 New?York 11.3 11.4 8 10 14
 12 Toronto 11.3 11.4 8 13
 13 Montreal 11.3 11.4 8 12 14 15 16 17 18
 14 Halifax 11.3 11.4 8 11 13 19 20
 15 Sherbrooke 11.3 11.4 13 16
-16 QuebecCity 11.3 11.4 13 15 17
+16 Quebec?City 11.3 11.4 13 15 17
 17 Victoriaville 11.3 11.4 13 15 16
 18 Tremblant 11.3 11.4 13
 19 Paris 11.3 11.4 14 20

@@ -11,7 +11,7 @@ import java.util.PriorityQueue;
 public class ShortestPath {
 	public final double PROP_SPEED = 200000000.0; //m/s
 	
-	public void startSimulation(Node sourceNode, Node destNode){
+	public void startSimulation(Node sourceNode, Node destNode, String message){
 		computePathsFromSource(sourceNode);
 		Node[] shortestPath = getShortestPath(destNode);
 		System.out.println("\nShortest path from " + sourceNode.getName() + " to " + destNode.getName() + ":");
@@ -19,7 +19,7 @@ public class ShortestPath {
 			System.out.print(p.getName() + "(" + p.getKey() + "), ");
 		}
 		System.out.println("\n");
-		sendPacket(shortestPath, "This is my message to transmit");
+		sendPacket(shortestPath, message);
 	}
 	
 	public void sendPacket(Node[] pathList, String message){

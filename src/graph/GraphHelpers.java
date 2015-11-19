@@ -5,7 +5,7 @@ import java.lang.Math;
 import graph.Node;
 
 public class GraphHelpers {
-    private static final double R = 6372.8;
+    private static final double R = 6371.01;
     
     public static double getDistance(Node from, Node to) {
         // Use Haversine distance formula
@@ -18,6 +18,6 @@ public class GraphHelpers {
         double a = Math.pow(Math.sin(d_lat / 2), 2) + Math.pow(Math.sin(d_lon / 2), 2) * Math.cos(from_latitude) * Math.cos(to_latitude);
         double c = 2 * Math.asin(Math.sqrt(a));
         
-        return R * c;
+        return R * c * 1000.0;	//return in m
     }
 }

@@ -1,5 +1,6 @@
 package Simulation;
 import graph.Node;
+import graph.Graph;
 import graph.Edge;
 import graph.GraphHelpers;
 
@@ -11,6 +12,11 @@ import java.util.concurrent.TimeUnit;
 
 public class ShortestPath {
 	public final double PROP_SPEED = 200000000.0; //m/s
+	private Graph graph;
+	
+	public ShortestPath(Graph graph){
+		this.graph = graph;
+	}
 	
 	public void startSimulation(Node sourceNode, Node destNode, String message){
 		computePathsFromSource(sourceNode);
@@ -52,7 +58,7 @@ public class ShortestPath {
 			System.out.println(currentNode.getName() + " to " + nextNode.getName() +
 							   " took " + formatSeconds(thisLinkTime));
 		}
-		System.out.println("Final message received: " + message + " in time " + formatSeconds(totalTime));
+		System.out.println("Final message received: \"" + message + "\" in time " + formatSeconds(totalTime));
 	}
 	
 	public String formatSeconds(double timeSeconds){

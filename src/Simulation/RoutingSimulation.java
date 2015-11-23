@@ -26,10 +26,12 @@ public class RoutingSimulation {
 						   " using the ");
 		
 		if(t == ROUTING_TYPE.ONION){
-			System.out.print("onion routing protocol");
+			System.out.print("onion routing protocol\n");
+			OnionRouting or = new OnionRouting(graph);
+			or.startSimulation(endPoints[0], endPoints[1], message);
 		}else{
 			System.out.print("shortest path protocol\n");
-			ShortestPath sp = new ShortestPath();
+			ShortestPath sp = new ShortestPath(graph);
 			sp.startSimulation(endPoints[0], endPoints[1], message);
 		}
 		

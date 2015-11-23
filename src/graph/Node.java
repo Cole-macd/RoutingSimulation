@@ -1,6 +1,15 @@
 package graph;
 
+import java.security.KeyPairGenerator;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.SecureRandom;
+import java.io.UnsupportedEncodingException;
+import java.security.KeyPair;
 import java.util.ArrayList;
+
+import javax.crypto.Cipher;
+import javax.crypto.spec.IvParameterSpec;
 
 public class Node implements Comparable<Node> {
     private double longitude;
@@ -11,6 +20,9 @@ public class Node implements Comparable<Node> {
     private String name;
     private ArrayList<Edge> outgoingEdgeObjects;
     private Integer[] outgoingEdgeKeys;
+    private PublicKey publicRSAKey;
+    private PrivateKey privateRSAKey;
+    private IvParameterSpec keySpec;
     
     public Node(int key, String name, double latitude, double longitude, Integer[] edges) {
         this.name = name;
@@ -19,6 +31,47 @@ public class Node implements Comparable<Node> {
         this.latitude = latitude;
         this.outgoingEdgeObjects = new ArrayList<Edge>();
         this.outgoingEdgeKeys = edges;
+        SecureRandom randomObj = new SecureRandom();
+        keySpec = new IvParameterSpec(randomObj.generateSeed(16));
+    }
+    
+    public IvParameterSpec getKeySpec(){
+    	return keySpec;
+    }
+    
+    public void generateRSAEncryptionKeys(){
+    	try{
+    	      final KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+    	      keyGen.initialize(1024);
+    	      final KeyPair key = keyGen.generateKeyPair();
+    	      this.publicRSAKey = key.getPublic();
+    	      this.privateRSAKey = key.getPrivate();
+    	}catch (Exception e) {
+    	      e.printStackTrace();
+    	}
+    }
+    
+    public PublicKey getRSAPublicKey(){
+    	return this.publicRSAKey;
+    }
+    
+    public String decryptMessage(String message){
+    	byte[] decryptedText = null;
+    	try{
+    		Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+    		cipher.init(Cipher.DECRYPT_MODE, this.privateRSAKey);
+    		byte[] messageBytes = message.getBytes();
+    		decryptedText = cipher.doFinal(messageBytes);
+    	}catch (Exception e){
+    		e.printStackTrace();
+    	}
+    	try {
+			return new String(decryptedText, "UTF8");
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}
     }
     
     public int compareTo(Node other){

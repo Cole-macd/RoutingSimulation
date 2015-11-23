@@ -12,24 +12,52 @@ public class Packet {
 	private String message;
 	private Stack<byte[]> encryptedStack;
 	private byte[] sessionKey;
-	private String sessionKeyString;
+	private boolean encrypted;
 	private ArrayList<byte[]> encryptedSessionKeys;
+	private int packetSizeBytes = 0;
+	private Node nextRelayNode;
 	
-	public Packet(String msg){
-		this.message = message;
-		this.encryptedStack = new Stack<byte[]>();
-		this.encryptedSessionKeys = new ArrayList<byte[]>();
-		sessionKey = new byte[128];
-		Random r = new Random();
-		r.nextBytes(sessionKey);
-		
-		sessionKey = "test".getBytes();
-		
-		sessionKeyString = new String(sessionKey);
+	public Packet(String msg, boolean encrypted){
+		this.message = msg;
+		this.encrypted = encrypted;
+		this.packetSizeBytes += msg.getBytes().length;
+		if(encrypted){
+			this.encryptedStack = new Stack<byte[]>();
+			this.encryptedSessionKeys = new ArrayList<byte[]>();
+			this.sessionKey = new byte[128];
+			Random r = new Random();
+			r.nextBytes(this.sessionKey);
+			this.packetSizeBytes += this.sessionKey.length;
+		}
+	}
+	
+	public boolean isEncrypted(){
+		return this.encrypted;
+	}
+	
+	public void setNextRelayNode(Node n){
+		this.nextRelayNode = n;
+	}
+	
+	public Node getNextRelayNode(){
+		return this.nextRelayNode;
+	}
+	
+	public int getPacketSize(){
+		return this.packetSizeBytes;
+	}
+	
+	public String getMessage(){
+		if(!this.encrypted){
+			return this.message;
+		}else{
+			return null;
+		}
 	}
 	
 	public void addEncryptedValue(byte[] value){
 		this.encryptedStack.push(value);
+		this.packetSizeBytes += (value.length);
 	}
 	
 	public byte[] getNextEncryptedValueIfValid(Node node){
@@ -37,19 +65,19 @@ public class Packet {
 		for(int i=0; i < this.encryptedSessionKeys.size(); i++){
 			byte[] currentSessionKey = this.encryptedSessionKeys.get(i);			
 			byte[] nodeSessionKey = node.decryptMessage(currentSessionKey);
-			if(Arrays.equals(nodeSessionKey, this.sessionKey)){
+			if(Arrays.equals(nodeSessionKey, this.sessionKey) && node.equals(this.nextRelayNode)){
 				valid = true;
 				break;
 			}
 		}
 		
 		if(valid){
-			return this.encryptedStack.pop();
+			byte[] retValue = this.encryptedStack.pop();
+			this.packetSizeBytes -= (retValue.length);
+			return retValue;
 		}else{
-			System.out.println("Node " + node.getKey() + " is not authorized to access encrypted data");
 			return null;
 		}
-		
 	}
 	
 	public void storeEncryptedSessionKey(PublicKey key){
@@ -62,5 +90,6 @@ public class Packet {
 			e.printStackTrace();
 		}
 		encryptedSessionKeys.add(cipherText);
+		this.packetSizeBytes += (cipherText.length);
 	}
 }

@@ -22,7 +22,6 @@ public class Node implements Comparable<Node> {
     private Integer[] outgoingEdgeKeys;
     private PublicKey publicRSAKey;
     private PrivateKey privateRSAKey;
-    private IvParameterSpec keySpec;
     
     public Node(int key, String name, double latitude, double longitude, Integer[] edges) {
         this.name = name;
@@ -31,13 +30,8 @@ public class Node implements Comparable<Node> {
         this.latitude = latitude;
         this.outgoingEdgeObjects = new ArrayList<Edge>();
         this.outgoingEdgeKeys = edges;
-        SecureRandom randomObj = new SecureRandom();
-        keySpec = new IvParameterSpec(randomObj.generateSeed(16));
     }
     
-    public IvParameterSpec getKeySpec(){
-    	return keySpec;
-    }
     
     public void generateRSAEncryptionKeys(){
     	try{

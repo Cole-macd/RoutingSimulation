@@ -10,15 +10,14 @@ import graph.GraphHelpers;
 import Simulation.ShortestPath;
 
 public class RoutingSimulation {
-	private static Graph graph;
 	private enum ROUTING_TYPE{ ONION, NORMAL};
 	
 	public static void main(String[] args){
-		graph = new Graph();
+		Graph graph = new Graph();
 		graph.createGraph();
 		
 		ROUTING_TYPE t = getRoutingTypeFromUser();
-		Node[] endPoints = getEndPointsFromUser();
+		Node[] endPoints = getEndPointsFromUser(graph);
 		String message = getMessageFromUser();
 		
 		System.out.print("Sending message \"" + message + "\" from " +
@@ -45,7 +44,7 @@ public class RoutingSimulation {
 		
 	}
 	
-	public static Node[] getEndPointsFromUser(){
+	public static Node[] getEndPointsFromUser(Graph graph){
 		String display = "\nChoose start and end nodes to send the message.\n";
 		for(int i=0; i < graph.nodes.length; i++){
 			display += (i + ". " + graph.nodes[i].getName());

@@ -1,6 +1,7 @@
 package Simulation;
 
 import graph.Node;
+import graph.Packet;
 
 import java.io.UnsupportedEncodingException;
 import java.security.Key;
@@ -30,8 +31,26 @@ public class OnionRouting {
 	
 	public void startSimulation(Node source, Node destination, String message){
 		Node[] relayNodes = getRelayNodes(source, destination);
-		byte[] tempMessageBytes = message.getBytes();
+		Packet packet = initializePacket(message, relayNodes);
 		
+		byte[] nextValue = packet.getNextEncryptedValueIfValid(relayNodes[0]);
+		byte[] decryptedValue = relayNodes[0].decryptMessage(nextValue);
+		String decryptedValueString = new String(decryptedValue);
+		System.out.println("first decrypted value is " + decryptedValueString);
+		
+		nextValue = packet.getNextEncryptedValueIfValid(relayNodes[1]);
+		decryptedValue = relayNodes[1].decryptMessage(nextValue);
+		decryptedValueString = new String(decryptedValue);
+		System.out.println("second decrypted value is " + decryptedValueString);
+		
+		nextValue = packet.getNextEncryptedValueIfValid(relayNodes[2]);
+		decryptedValue = relayNodes[2].decryptMessage(nextValue);
+		decryptedValueString = new String(decryptedValue);
+		System.out.println("third decrypted is " + decryptedValueString);
+		
+
+		//packet = sendPacketToEntryNode(packet, source, relayNodes[0]);
+
 		/*relayNodes[0].generateRSAEncryptionKeys();
 		String tempMessage = encryptMessage(message, relayNodes[0].getRSAPublicKey());
 		System.out.println("After 1 encryption, message is \"" + tempMessage+ "\"");
@@ -74,14 +93,25 @@ public class OnionRouting {
 
 		}
 		*/
+		
+		/*
 		Key tempKey = generateSymmetricKey();
 	    IvParameterSpec iv = relayNodes[0].getKeySpec();
-	    String firstEncryptedValue = encryptWithSymKey(message, tempKey, iv);
+	    byte[] firstBytes = encryptWithSymKey(message, tempKey, iv);
+	    byte[] secondBytes = ",test".getBytes();
+	    
+	    byte[] c = new byte[firstBytes.length + secondBytes.length];
+	    System.arraycopy(firstBytes, 0, c, 0, firstBytes.length);
+	    System.arraycopy(secondBytes, 0, c, firstBytes.length, secondBytes.length);
+	    
+	    String firstEncryptedValue = new BASE64Encoder().encode(c);
 	    System.out.println("after 1 encryption, message is " + firstEncryptedValue);
+	   // firstEncryptedValue += (new BASE64Encoder().encode(",test".getBytes()));
 	    
 	    Key tempKey2 = generateSymmetricKey();
 	    IvParameterSpec iv2 = relayNodes[1].getKeySpec();
-	    String secondEncryptedValue = encryptWithSymKey(firstEncryptedValue, tempKey2, iv2);
+	    byte[] secondEncryptBytes = encryptWithSymKey(firstEncryptedValue, tempKey2, iv2);
+	    String secondEncryptedValue = new BASE64Encoder().encode(secondEncryptBytes);
 	    System.out.println("after 2 encryptions, message is " + secondEncryptedValue);
 	    
 	    String firstDecryptedValue = decryptWithSymKey(secondEncryptedValue, tempKey2, iv2);
@@ -90,10 +120,32 @@ public class OnionRouting {
 	    
 	    String secondDecryptedValue = decryptWithSymKey(firstDecryptedValue, tempKey, iv);
 	    System.out.println("after 2 decryptions, message is " + secondDecryptedValue);
+		*/
+	}
+	
+	public Packet initializePacket(String message, Node[] relayNodes){
+		Packet packet = new Packet(message);
 		
+		relayNodes[2].generateRSAEncryptionKeys();
+		byte[] tempMessage = encryptMessage(message, relayNodes[2].getRSAPublicKey());
+		packet.addEncryptedValue(tempMessage);
 		
+		relayNodes[1].generateRSAEncryptionKeys();
+		String nextMessage = "next:" + relayNodes[2].getKey();
+		tempMessage = encryptMessage(nextMessage, relayNodes[1].getRSAPublicKey());
+		packet.addEncryptedValue(tempMessage);
 		
+		relayNodes[0].generateRSAEncryptionKeys();
+		nextMessage = "next:" + relayNodes[1].getKey();
+		tempMessage = encryptMessage(nextMessage, relayNodes[0].getRSAPublicKey());
+		packet.addEncryptedValue(tempMessage);
 		
+		//only allow nodes who have a valid session key to access the encrypted data
+		for(int i=0; i < relayNodes.length; i++){
+			packet.storeEncryptedSessionKey(relayNodes[i].getRSAPublicKey());
+		}
+		
+		return packet;
 	}
 	
 	public Key generateSymmetricKey(){
@@ -108,7 +160,7 @@ public class OnionRouting {
 		}
 	}
 	
-	public String encryptWithSymKey(String message, Key key, IvParameterSpec iv){
+	public byte[] encryptWithSymKey(String message, Key key, IvParameterSpec iv){
 		try{
 		Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
 	      cipher.init(Cipher.ENCRYPT_MODE,key,iv);
@@ -117,10 +169,10 @@ public class OnionRouting {
 
 	      byte[] raw = cipher.doFinal(stringBytes);
 
-	      return new BASE64Encoder().encode(raw);
+	      //return new BASE64Encoder().encode(raw);
 	      //return Base64.encodeBase64String(raw);
 	      //return new String(raw);
-	      //return raw;
+	      return raw;
 		}catch (Exception e){
 			e.printStackTrace();
 			return null;
@@ -144,7 +196,7 @@ public class OnionRouting {
 		}
 	}
 	
-	public String encryptMessage(String message, PublicKey key){
+	public byte[] encryptMessage(String message, PublicKey key){
 		byte[] cipherText = null;
 		try{
 			Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
@@ -154,13 +206,15 @@ public class OnionRouting {
 		}catch (Exception e){
 			e.printStackTrace();
 		}
+		return cipherText;
+		/*
 		try {
 			return new String(cipherText, "UTF8");
 		} catch (UnsupportedEncodingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 			return null;
-		}
+		}*/
 	}
 	
 	public Node[] getRelayNodes(Node source, Node dest){
@@ -172,6 +226,7 @@ public class OnionRouting {
 			if(temp != source.getKey() && temp != dest.getKey() && temp != nodeKeys[0]
 			   && temp != nodeKeys[1] && temp != nodeKeys[2]){
 				nodeKeys[currentIndex] = temp;
+				System.out.println("adding " + temp + " as a relay");
 				currentIndex++;
 				if(currentIndex == 3){
 					break;

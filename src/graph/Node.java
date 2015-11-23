@@ -42,7 +42,7 @@ public class Node implements Comparable<Node> {
     public void generateRSAEncryptionKeys(){
     	try{
     	      final KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-    	      keyGen.initialize(1024);
+    	      keyGen.initialize(2048);
     	      final KeyPair key = keyGen.generateKeyPair();
     	      this.publicRSAKey = key.getPublic();
     	      this.privateRSAKey = key.getPrivate();
@@ -55,23 +55,25 @@ public class Node implements Comparable<Node> {
     	return this.publicRSAKey;
     }
     
-    public String decryptMessage(String message){
+    public byte[] decryptMessage(byte[] message){
     	byte[] decryptedText = null;
     	try{
     		Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
     		cipher.init(Cipher.DECRYPT_MODE, this.privateRSAKey);
-    		byte[] messageBytes = message.getBytes();
-    		decryptedText = cipher.doFinal(messageBytes);
+    		//byte[] messageBytes = message.getBytes();
+    		decryptedText = cipher.doFinal(message);
     	}catch (Exception e){
-    		e.printStackTrace();
+    		return null;
     	}
+    	return decryptedText;
+    	/*
     	try {
 			return new String(decryptedText, "UTF8");
 		} catch (UnsupportedEncodingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 			return null;
-		}
+		}*/
     }
     
     public int compareTo(Node other){

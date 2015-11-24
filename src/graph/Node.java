@@ -3,13 +3,10 @@ package graph;
 import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.SecureRandom;
-import java.io.UnsupportedEncodingException;
 import java.security.KeyPair;
 import java.util.ArrayList;
 
 import javax.crypto.Cipher;
-import javax.crypto.spec.IvParameterSpec;
 
 public class Node implements Comparable<Node> {
     private double longitude;
@@ -32,7 +29,7 @@ public class Node implements Comparable<Node> {
         this.outgoingEdgeKeys = edges;
     }
     
-    
+    /* Generates a RSA key pair and sets to the class variables */
     public void generateRSAEncryptionKeys(){
     	try{
     	      final KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
@@ -45,33 +42,22 @@ public class Node implements Comparable<Node> {
     	}
     }
     
-    public PublicKey getRSAPublicKey(){
-    	return this.publicRSAKey;
-    }
-    
+    /* Accepts an encrypted message and attempts to decrypt using the node's private RSA key */
     public byte[] decryptMessage(byte[] message){
     	byte[] decryptedText = null;
     	try{
     		Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
     		cipher.init(Cipher.DECRYPT_MODE, this.privateRSAKey);
-    		//byte[] messageBytes = message.getBytes();
     		decryptedText = cipher.doFinal(message);
     	}catch (Exception e){
+    		//if message encrypted with different public key, doFinal() will throw an error
     		return null;
     	}
     	return decryptedText;
-    	/*
-    	try {
-			return new String(decryptedText, "UTF8");
-		} catch (UnsupportedEncodingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return null;
-		}*/
     }
     
-    public int compareTo(Node other){
-    	return Double.compare(minDistance, other.minDistance);
+    public PublicKey getRSAPublicKey(){
+    	return this.publicRSAKey;
     }
     
     public Integer[] getEdgeKeys(){
@@ -117,5 +103,9 @@ public class Node implements Comparable<Node> {
 
     public void setKey(int key) {
         this.key = key;
+    }
+    
+    public int compareTo(Node other){
+    	return Double.compare(minDistance, other.minDistance);
     }
 }

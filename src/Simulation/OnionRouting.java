@@ -4,12 +4,9 @@ import graph.Node;
 import graph.Packet;
 import Simulation.ShortestPath;
 
-import java.io.UnsupportedEncodingException;
 import java.security.Key;
-import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -20,7 +17,6 @@ import javax.crypto.spec.IvParameterSpec;
 import sun.misc.BASE64Decoder;
 import sun.misc.BASE64Encoder;
 
-import graph.Edge;
 import graph.Graph;
 
 public class OnionRouting {
@@ -30,108 +26,80 @@ public class OnionRouting {
 		this.graph = graph;
 	}
 	
+	/* Initializes the packet, chooses the random relay nodes, and starts the protocol */
 	public void startSimulation(Node source, Node destination, String message){
 		Node[] relayNodes = getRelayNodes(source, destination);
 		Packet packet = initializePacket(message, relayNodes, destination);
 		startOnionRouter(source, packet);
-		
-		/*
-		ShortestPath sp = new ShortestPath(this.graph);
-		sp.computePathsFromSource(source);
-		Node[] pathList = sp.getShortestPath(relayNo);
-		sp.sendPacket(pathList, packet);
-
-		packet = sendPacketToEntryNode(packet, source, relayNodes[0]);
-		byte[] nextValue = packet.getNextEncryptedValueIfValid(relayNodes[0]);
-		byte[] decryptedValue = relayNodes[0].decryptMessage(nextValue);
-		String decryptedValueString = new String(decryptedValue);
-		String[] dataList = decryptedValueString.split(":");
-		Integer nextKey = Integer.parseInt(dataList[1]);*/
-		
-		//System.out.println("first decrypted value is " + decryptedValueString);
-		
-		/*
-		byte[] nextValue = packet.getNextEncryptedValueIfValid(relayNodes[0]);
-		byte[] decryptedValue = relayNodes[0].decryptMessage(nextValue);
-		String decryptedValueString = new String(decryptedValue);
-		System.out.println("first decrypted value is " + decryptedValueString);
-		
-		nextValue = packet.getNextEncryptedValueIfValid(relayNodes[1]);
-		decryptedValue = relayNodes[1].decryptMessage(nextValue);
-		decryptedValueString = new String(decryptedValue);
-		System.out.println("second decrypted value is " + decryptedValueString);
-		
-		nextValue = packet.getNextEncryptedValueIfValid(relayNodes[2]);
-		decryptedValue = relayNodes[2].decryptMessage(nextValue);
-		decryptedValueString = new String(decryptedValue);
-		System.out.println("third decrypted is " + decryptedValueString);*/
-
 	}
 	
+	/* Start protocol; the packet only knows the location of the next relay node */
 	public void startOnionRouter(Node source, Packet packet){
+		//compute the shortest paths to all nodes from the source
 		ShortestPath sp = new ShortestPath(this.graph);
 		sp.computePathsFromSource(source);
+		
+		//compute the shortest path from the source to the first relay node: the entry node
 		Node currentNode = source;
 		Node nextNode = packet.getNextRelayNode();
 		Node[] pathList = sp.getShortestPath(nextNode);
+		System.out.println("\nComputing shortest path from " + currentNode.getName() + "(" + currentNode.getKey() +
+				   ") to " + nextNode.getName() + "(" + nextNode.getKey() + ")");
+
+		sp.printPath(pathList);
 		
-		System.out.println("\nShortest path from " + source.getName() + " to " + nextNode.getName() + ":");
-		for(Node p: pathList){
-			System.out.print(p.getName() + "(" + p.getKey() + ") --> ");
-		}
-		System.out.println("\n");
-		
+		//the protocol parameters
 		int currentIndex = 0;
-		int currentRelayIndex = 0;
 		byte[] tempEncryptedValue;
 		byte[] tempDecryptedValue;
 		String tempDecryptedString = "";
 		boolean finalTrip = false;
 		String finalMessage = "";
+		
 		while(true){
+			//try to remove a layer of encryption, since node doesn't know if it is a relay or not
 			currentNode = pathList[currentIndex];
 			tempEncryptedValue = packet.getNextEncryptedValueIfValid(currentNode);
+			
 			if(tempEncryptedValue != null){
-				System.out.println(currentNode.getKey() + " decrypted successfully");
+				//node is a relay node, so decrypt a layer of packet data
 				tempDecryptedValue = currentNode.decryptMessage(tempEncryptedValue);
 				tempDecryptedString = new String(tempDecryptedValue);
-				System.out.println(tempDecryptedString);
+				System.out.println(currentNode.getName() + "(" + currentNode.getKey() + 
+								   ") recognized it was a relay node; removed and decrypted data layer, data:\"" + 
+								   tempDecryptedString + "\"");
+				
+				//process the decrypted data to determine the next relay node
 				String[] valueList = tempDecryptedString.split(",");
 				String[] dataList = valueList[0].split(":");
 				Integer nextKey = Integer.parseInt(dataList[1]);
 				if(valueList.length > 1){
-					//final relay node
+					//current node is final relay node, so set next "relay node" is the destination
 					finalTrip = true;
 					String[] messageList = valueList[1].split(":");
 					finalMessage = messageList[1];
 				}
 				
-				for(int i=0; i < this.graph.nodes.length; i++){
-					if(nextKey == this.graph.nodes[i].getKey()){
-						System.out.println("Computing paths from " + currentNode.getKey() + " to " + this.graph.nodes[i].getKey());
-						packet.setNextRelayNode(this.graph.nodes[i]);
-						sp.computePathsFromSource(currentNode);
-						pathList = sp.getShortestPath(this.graph.nodes[i]);
-					}
-				}
-				/*Node nextRelayNode = getNodeFromKey(nextKey);
+				//set the next relay node
+				Node nextRelayNode = getNodeFromKey(nextKey);
 				packet.setNextRelayNode(nextRelayNode);
 				
-				System.out.println("Computing paths from " + currentNode.getKey() + " to " + nextRelayNode.getKey());
-				sp = new ShortestPath(this.graph);
+				//compute and get the shortest path from current node to next relay node
 				sp.computePathsFromSource(currentNode);
-				pathList = sp.getShortestPath(nextRelayNode);*/
+				pathList = sp.getShortestPath(nextRelayNode);
+				System.out.println("\nComputing shortest path from " + currentNode.getName() + "(" + currentNode.getKey() +
+								   ") to " + nextRelayNode.getName() + "(" + nextRelayNode.getKey() + ")");
+				sp.printPath(pathList);
 				
-				for(Node p: pathList){
-					System.out.print(p.getName() + "(" + p.getKey() + ") --> ");
-				}
-				System.out.println("\n");
+				//reset the path index and send first packet in path
 				currentIndex = 0;
 				nextNode = pathList[currentIndex+1];
 				currentIndex++;
 				sp.sendPacket(packet, currentNode, nextNode);
 			}else{
+				//node is not a relay node, so just send the packet to the next node in path
 				if(finalTrip && currentIndex == pathList.length-1){
+					//the packet has reached the destination
 					break;
 				}
 				nextNode = pathList[currentIndex+1];
@@ -139,24 +107,21 @@ public class OnionRouting {
 				sp.sendPacket(packet, currentNode, nextNode);	
 			}
 		}
-		System.out.println("Final message " + finalMessage);
+		System.out.println("Final message received at " + currentNode.getName() + " was \"" + finalMessage + "\"");
 	}
 	
-	public Node getNodeFromKey(int key){
-		for(int i=0; i < this.graph.nodes.length; i++){
-			if(this.graph.nodes[i].getKey() == key){
-				return this.graph.nodes[i];
-			}
-		}
-		return null;
-	}
-
-	
+	/* Initialize the packet by encrypting the locations of the relay nodes and storing them
+	 * in a stack, such that the top of the stack holds the entry node, and the bottom of the stack
+	 * holds the destination node and the unencrypted message.
+	 */
 	public Packet initializePacket(String message, Node[] relayNodes, Node dest){
 		Packet packet = new Packet(message, true);
 		
+		//the first thing in the stack is the destination node and unencrypted message
 		relayNodes[2].generateRSAEncryptionKeys();
 		String nextMessage = "next:" + dest.getKey() + ",message:" + message;
+		
+		//encrypt the message and store it in the packet's stack
 		byte[] tempMessage = encryptMessage(nextMessage, relayNodes[2].getRSAPublicKey());
 		packet.addEncryptedValue(tempMessage);
 		
@@ -170,64 +135,55 @@ public class OnionRouting {
 		tempMessage = encryptMessage(nextMessage, relayNodes[0].getRSAPublicKey());
 		packet.addEncryptedValue(tempMessage);
 		
-		//only allow nodes who have a valid session key to access the encrypted data
+		//encrypt the packet's session key with each relay node's public key
+		//only these nodes will be able to remove encrypted layers
 		for(int i=0; i < relayNodes.length; i++){
 			packet.storeEncryptedSessionKey(relayNodes[i].getRSAPublicKey());
 		}
 		
+		//set the packets next relay node to the entry node
 		packet.setNextRelayNode(relayNodes[0]);
-		
 		return packet;
 	}
 	
-	public Key generateSymmetricKey(){
-		try{
-			KeyGenerator kg = KeyGenerator.getInstance("AES");
-		    SecureRandom random = new SecureRandom();
-		    kg.init(random);
-		    return kg.generateKey();
-		}catch (Exception e){
-			e.printStackTrace();
-			return null;
+	/* Randomly generates 3 nodes in the network to act as relay nodes */
+	public Node[] getRelayNodes(Node source, Node dest){
+		Random rand = new Random();
+		int[] nodeKeys = {-1,-1,-1};
+		int currentIndex = 0;
+		while(true){
+			//generate random number
+			int temp = rand.nextInt(graph.nodes.length);
+			
+			//if the key is not the source, dest, or one of the previously chosen relay nodes, it is valid
+			if(temp != source.getKey() && temp != dest.getKey() && temp != nodeKeys[0]
+			   && temp != nodeKeys[1] && temp != nodeKeys[2]){
+				nodeKeys[currentIndex] = temp;
+				currentIndex++;
+				if(currentIndex == 3){
+					break;
+				}
+			}
 		}
+		
+		//sort the keys so that there is no bias in how the nodes are chosen
+		Arrays.sort(nodeKeys);
+		Node[] relayNodes = new Node[3];
+		currentIndex = 0;
+		for(int i=0; i < graph.nodes.length; i++){
+			if(graph.nodes[i].getKey() == nodeKeys[currentIndex]){
+				relayNodes[currentIndex] = graph.nodes[i];
+				System.out.println(graph.nodes[i].getName() + "(" + graph.nodes[i].getKey() + ") chosen as relay node.");
+				currentIndex++;
+				if(currentIndex == 3){
+					break;
+				}
+			}
+		}
+		return relayNodes;
 	}
 	
-	public byte[] encryptWithSymKey(String message, Key key, IvParameterSpec iv){
-		try{
-		Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-	      cipher.init(Cipher.ENCRYPT_MODE,key,iv);
-
-	      byte[] stringBytes = message.getBytes();
-
-	      byte[] raw = cipher.doFinal(stringBytes);
-
-	      //return new BASE64Encoder().encode(raw);
-	      //return Base64.encodeBase64String(raw);
-	      //return new String(raw);
-	      return raw;
-		}catch (Exception e){
-			e.printStackTrace();
-			return null;
-		}
-	}
-	
-	public String decryptWithSymKey(String message, Key key, IvParameterSpec iv){
-		try{
-		Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-	      cipher.init(Cipher.DECRYPT_MODE, key,iv);
-
-	      byte[] raw = new BASE64Decoder().decodeBuffer(message);
-
-	      byte[] stringBytes = cipher.doFinal(raw);
-
-	      String clearText = new String(stringBytes, "UTF8");
-	      return clearText;
-		}catch (Exception e){
-			e.printStackTrace();
-			return null;
-		}
-	}
-	
+	/* Encrypts a string message using the input public key */
 	public byte[] encryptMessage(String message, PublicKey key){
 		byte[] cipherText = null;
 		try{
@@ -239,44 +195,15 @@ public class OnionRouting {
 			e.printStackTrace();
 		}
 		return cipherText;
-		/*
-		try {
-			return new String(cipherText, "UTF8");
-		} catch (UnsupportedEncodingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return null;
-		}*/
 	}
 	
-	public Node[] getRelayNodes(Node source, Node dest){
-		Random rand = new Random();
-		int[] nodeKeys = {-1,-1,-1};
-		int currentIndex = 0;
-		while(true){
-			int temp = rand.nextInt(graph.nodes.length);
-			if(temp != source.getKey() && temp != dest.getKey() && temp != nodeKeys[0]
-			   && temp != nodeKeys[1] && temp != nodeKeys[2]){
-				nodeKeys[currentIndex] = temp;
-				System.out.println("adding " + temp + " as a relay");
-				currentIndex++;
-				if(currentIndex == 3){
-					break;
-				}
+	/* Returns the node objects from the integer key, null if key doesn't exist */
+	public Node getNodeFromKey(int key){
+		for(int i=0; i < this.graph.nodes.length; i++){
+			if(this.graph.nodes[i].getKey() == key){
+				return this.graph.nodes[i];
 			}
 		}
-		Arrays.sort(nodeKeys);
-		Node[] relayNodes = new Node[3];
-		currentIndex = 0;
-		for(int i=0; i < graph.nodes.length; i++){
-			if(graph.nodes[i].getKey() == nodeKeys[currentIndex]){
-				relayNodes[currentIndex] = graph.nodes[i];
-				currentIndex++;
-				if(currentIndex == 3){
-					break;
-				}
-			}
-		}
-		return relayNodes;
+		return null;
 	}
 }

@@ -36,6 +36,7 @@ public class OnionRouting {
 	/* Start protocol; the packet only knows the location of the next relay node */
 	public void startOnionRouter(Node source, Packet packet){
 		//compute the shortest paths to all nodes from the source
+		long processingStartTime = System.nanoTime();
 		ShortestPath sp = new ShortestPath(this.graph);
 		sp.computePathsFromSource(source);
 		
@@ -43,6 +44,12 @@ public class OnionRouting {
 		Node currentNode = source;
 		Node nextNode = packet.getNextRelayNode();
 		Node[] pathList = sp.getShortestPath(nextNode);
+		
+		long processingEndTime = System.nanoTime();
+		double processingDelay = (processingEndTime - processingStartTime) / 1e9;
+		double processingDelaySum = processingDelay;
+		double nodeCount = 0;
+		double totalTime = processingDelay;
 		System.out.println("\nComputing shortest path from " + currentNode.getName() + "(" + currentNode.getKey() +
 				   ") to " + nextNode.getName() + "(" + nextNode.getKey() + ")");
 
@@ -55,11 +62,12 @@ public class OnionRouting {
 		String tempDecryptedString = "";
 		boolean finalTrip = false;
 		String finalMessage = "";
-		double totalTime = 0.0;
 		
 		while(true){
 			//try to remove a layer of encryption, since node doesn't know if it is a relay or not
 			currentNode = pathList[currentIndex];
+			nodeCount++;
+			processingStartTime = System.nanoTime();
 			tempEncryptedValue = packet.getNextEncryptedValueIfValid(currentNode);
 			
 			if(tempEncryptedValue != null){
@@ -67,20 +75,13 @@ public class OnionRouting {
 				tempDecryptedValue = currentNode.decryptMessage(tempEncryptedValue);
 				tempDecryptedString = new String(tempDecryptedValue);
 				
-				
-				long processingStartTime = System.nanoTime();
+				//process the decrypted data
 				String[] decryptedData = processPacket(tempDecryptedString);
 				Integer nextKey = Integer.parseInt(decryptedData[0]);
 				if(decryptedData.length > 1){
 					finalTrip = true;
 					finalMessage = decryptedData[1];
 				}
-				long processingEndTime = System.nanoTime();
-				double processingDelay = (processingEndTime - processingStartTime) / 1e9;
-				totalTime += processingDelay;
-				System.out.println(currentNode.getName() + "(" + currentNode.getKey() + 
-						   ") recognized it was a relay node; removed and decrypted data layer, data:\"" + 
-						   tempDecryptedString + "\" processed in " + sp.formatSeconds(processingDelay));
 				
 				//set the next relay node
 				Node nextRelayNode = getNodeFromKey(nextKey);
@@ -88,7 +89,18 @@ public class OnionRouting {
 				
 				//compute and get the shortest path from current node to next relay node
 				sp.computePathsFromSource(currentNode);
+				
+				//node finished processing, calculate processing delay
 				pathList = sp.getShortestPath(nextRelayNode);
+				processingEndTime = System.nanoTime();
+				processingDelay = (processingEndTime - processingStartTime) / 1e9;
+				processingDelaySum += processingDelay;
+				totalTime += processingDelay;
+
+				System.out.println(currentNode.getName() + "(" + currentNode.getKey() + 
+						   ") recognized it was a relay node; removed and decrypted data layer, data:\"" + 
+						   tempDecryptedString + "\" processed in " + sp.formatSeconds(processingDelay));
+				
 				System.out.println("\nComputing shortest path from " + currentNode.getName() + "(" + currentNode.getKey() +
 								   ") to " + nextRelayNode.getName() + "(" + nextRelayNode.getKey() + ")");
 				sp.printPath(pathList);
@@ -100,6 +112,10 @@ public class OnionRouting {
 				totalTime += sp.sendPacket(packet, currentNode, nextNode);
 			}else{
 				//node is not a relay node, so just send the packet to the next node in path
+				processingEndTime = System.nanoTime();
+				processingDelay = (processingEndTime - processingStartTime) / 1e9;
+				processingDelaySum += processingDelay;
+				totalTime += processingDelay;
 				if(finalTrip && currentIndex == pathList.length-1){
 					//the packet has reached the destination
 					break;
@@ -109,7 +125,9 @@ public class OnionRouting {
 				totalTime += sp.sendPacket(packet, currentNode, nextNode);	
 			}
 		}
+		double averageProcessingDelay = processingDelaySum / (double)nodeCount;
 		System.out.println("Final message received at " + currentNode.getName() + " was \"" + finalMessage + "\" in " + sp.formatSeconds(totalTime));
+		System.out.println("Node count is " + nodeCount + ", average processing delay is " + sp.formatSeconds(averageProcessingDelay));
 	}
 	
 	public String[] processPacket(String decryptedString){

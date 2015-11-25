@@ -24,20 +24,27 @@ public class ShortestPath {
 	public void startSimulation(Node sourceNode, Node destNode, String message){
 		Packet packet = new Packet(message, false);
 		
+		long processingStartTime = System.nanoTime();
+
 		//compute and get shortest path from source to destination
 		computePathsFromSource(sourceNode);
 		Node[] shortestPath = getShortestPath(destNode);
+		
+		long processingEndTime = System.nanoTime();
+		double processingDelay = (processingEndTime - processingStartTime) / 1e9;
+		double averageProcessingDelay = processingDelay / (double)shortestPath.length;
+		double totalTime = processingDelay;
 		
 		System.out.println("Running shortest path from " + sourceNode.getName() + "(" + sourceNode.getKey() +
 						   ") to " + destNode.getName() + "(" + destNode.getKey() + ")");
 		printPath(shortestPath);
 		
-		double totalTime = 0.0;
 		for(int i=0; i < shortestPath.length-1; i++){
 			//send packet from one node to another
 			totalTime += sendPacket(packet, shortestPath[i], shortestPath[i+1]);
 		}
 		System.out.println("Final message received at " + destNode.getName() + " is \"" + message + "\". The message took " + formatSeconds(totalTime));
+		System.out.println("The average processing delay at each node was " + formatSeconds(averageProcessingDelay));
 	}
 	
 	

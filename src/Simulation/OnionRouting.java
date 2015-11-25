@@ -55,6 +55,7 @@ public class OnionRouting {
 		String tempDecryptedString = "";
 		boolean finalTrip = false;
 		String finalMessage = "";
+		double totalTime = 0.0;
 		
 		while(true){
 			//try to remove a layer of encryption, since node doesn't know if it is a relay or not
@@ -65,20 +66,21 @@ public class OnionRouting {
 				//node is a relay node, so decrypt a layer of packet data
 				tempDecryptedValue = currentNode.decryptMessage(tempEncryptedValue);
 				tempDecryptedString = new String(tempDecryptedValue);
-				System.out.println(currentNode.getName() + "(" + currentNode.getKey() + 
-								   ") recognized it was a relay node; removed and decrypted data layer, data:\"" + 
-								   tempDecryptedString + "\"");
 				
-				//process the decrypted data to determine the next relay node
-				String[] valueList = tempDecryptedString.split(",");
-				String[] dataList = valueList[0].split(":");
-				Integer nextKey = Integer.parseInt(dataList[1]);
-				if(valueList.length > 1){
-					//current node is final relay node, so set next "relay node" is the destination
+				
+				long processingStartTime = System.nanoTime();
+				String[] decryptedData = processPacket(tempDecryptedString);
+				Integer nextKey = Integer.parseInt(decryptedData[0]);
+				if(decryptedData.length > 1){
 					finalTrip = true;
-					String[] messageList = valueList[1].split(":");
-					finalMessage = messageList[1];
+					finalMessage = decryptedData[1];
 				}
+				long processingEndTime = System.nanoTime();
+				double processingDelay = (processingEndTime - processingStartTime) / 1e9;
+				totalTime += processingDelay;
+				System.out.println(currentNode.getName() + "(" + currentNode.getKey() + 
+						   ") recognized it was a relay node; removed and decrypted data layer, data:\"" + 
+						   tempDecryptedString + "\" processed in " + sp.formatSeconds(processingDelay));
 				
 				//set the next relay node
 				Node nextRelayNode = getNodeFromKey(nextKey);
@@ -95,7 +97,7 @@ public class OnionRouting {
 				currentIndex = 0;
 				nextNode = pathList[currentIndex+1];
 				currentIndex++;
-				sp.sendPacket(packet, currentNode, nextNode);
+				totalTime += sp.sendPacket(packet, currentNode, nextNode);
 			}else{
 				//node is not a relay node, so just send the packet to the next node in path
 				if(finalTrip && currentIndex == pathList.length-1){
@@ -104,10 +106,30 @@ public class OnionRouting {
 				}
 				nextNode = pathList[currentIndex+1];
 				currentIndex++;
-				sp.sendPacket(packet, currentNode, nextNode);	
+				totalTime += sp.sendPacket(packet, currentNode, nextNode);	
 			}
 		}
-		System.out.println("Final message received at " + currentNode.getName() + " was \"" + finalMessage + "\"");
+		System.out.println("Final message received at " + currentNode.getName() + " was \"" + finalMessage + "\" in " + sp.formatSeconds(totalTime));
+	}
+	
+	public String[] processPacket(String decryptedString){
+		//process the decrypted data to determine the next relay node
+		String[] valueList = decryptedString.split(",");
+		String[] dataList = valueList[0].split(":");
+		String nextKey = dataList[1];
+		String[] retValue;
+		if(valueList.length > 1){
+			//current node is final relay node, so set next "relay node" is the destination
+			String[] messageList = valueList[1].split(":");
+			String finalMessage = messageList[1];
+			retValue = new String[2];
+			retValue[0] = nextKey;
+			retValue[1] = finalMessage;
+		}else{
+			retValue = new String[1];
+			retValue[0] = nextKey;
+		}
+		return retValue;
 	}
 	
 	/* Initialize the packet by encrypting the locations of the relay nodes and storing them

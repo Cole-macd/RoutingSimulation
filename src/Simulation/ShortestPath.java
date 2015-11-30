@@ -5,12 +5,11 @@ import graph.Edge;
 import graph.GraphHelpers;
 import graph.Packet;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.PriorityQueue;
+import java.util.Random;
 
 public class ShortestPath {
-	public final double PROP_SPEED = 200000000.0; 		//in m/s
+	public final double PROP_SPEED = 800000000.0; 		//in m/s
 	private Graph graph;
 	
 	
@@ -24,25 +23,50 @@ public class ShortestPath {
 	public void startSimulation(Node sourceNode, Node destNode, String message){
 		Packet packet = new Packet(message, false);
 		
+		//start processing timer to process first node
 		long processingStartTime = System.nanoTime();
 
-		//compute and get shortest path from source to destination
-		computePathsFromSource(sourceNode);
-		Node[] shortestPath = getShortestPath(destNode);
+		//compute forwarding tables for the shortest path between the source and dest
+		computeForwardingTables(sourceNode, destNode);
+		printPath(sourceNode, destNode);
 		
+		//end processing timer, add to totalTime and total processing delay
 		long processingEndTime = System.nanoTime();
 		double processingDelay = (processingEndTime - processingStartTime) / 1e9;
-		double averageProcessingDelay = processingDelay / (double)shortestPath.length;
+		double processingDelaySum = processingDelay;
 		double totalTime = processingDelay;
 		
+		//display the endpoints of the transmission
 		System.out.println("Running shortest path from " + sourceNode.getName() + "(" + sourceNode.getKey() +
 						   ") to " + destNode.getName() + "(" + destNode.getKey() + ")");
-		printPath(shortestPath);
 		
-		for(int i=0; i < shortestPath.length-1; i++){
-			//send packet from one node to another
-			totalTime += sendPacket(packet, shortestPath[i], shortestPath[i+1]);
+		//send packet along path using forwarding table of each node on the path
+		int nodeCount = 0;
+		Node currentNode = sourceNode;
+		Node nextNode = sourceNode.getNextNodeFromForwardingTable(destNode);
+		while(nextNode != null){
+			//send the packet along one link
+			nodeCount++;
+			totalTime += sendPacketSingleLink(packet, currentNode, nextNode);
+			currentNode = nextNode;
+			
+			//process the packet to get next node, and add to the processing time count
+			totalTime += simulateTraffic();
+			processingStartTime = System.nanoTime();
+			nextNode = currentNode.getNextNodeFromForwardingTable(destNode);
+			processingEndTime = System.nanoTime();
+			processingDelay = ((processingEndTime - processingStartTime) / 1e9);
+			processingDelaySum += processingDelay;
+			totalTime += processingDelay;
 		}
+		
+		//need to include processing time at destination
+		nodeCount++;
+		
+		//computer average processing delay per node
+		double averageProcessingDelay = processingDelaySum / (double)nodeCount;
+
+		//print simulation results
 		System.out.println("Final message received at " + destNode.getName() + " is \"" + message + "\". The message took " + formatSeconds(totalTime));
 		System.out.println("The average processing delay at each node was " + formatSeconds(averageProcessingDelay));
 	}
@@ -50,13 +74,14 @@ public class ShortestPath {
 	
 	/* Simulates sending a packet from one node to another assuming there is a link between the two.
 	 * Also simulates transmission and propagation delays */
-	public double sendPacket(Packet packet, Node source, Node dest){
+	public double sendPacketSingleLink(Packet packet, Node source, Node dest){
 		//get the size of the packet, different for encrypted (onion routing) and unencrypted (shortest path)
 		int messageDataSizeBytes = packet.getPacketSize();
 		int messageOverheadBytes = 32;
 		int messageSizeBytes = messageDataSizeBytes + messageOverheadBytes;
 
 		//compute the geographic distance between the two nodes, in meters
+		//not considered processing time, because distance just used to calculation transmission time (packet or node doesn't calculate this in practice)
 		double nextDistance = GraphHelpers.getDistance(source, dest);
 		
 		//get the speed of the link connecting the two nodes and compute the delays
@@ -81,28 +106,11 @@ public class ShortestPath {
 	}
 	
 	
-	/* Assuming the shortest paths have been computed by the source, return an array of nodes in the 
-	 * shortest path to the destination.
+	/* Performs Dijkstra's algorithm to compute the shortest paths from the source node. 
+	 * Once the shortest path is computed, add an entry to the forwarding table for each node
+	 * telling the current node the next node in the path to the destination.
 	 */
-	public Node[] getShortestPath(Node dest){
-		ArrayList<Node> path = new ArrayList<Node>();
-		
-		//start at the destination and iterate through the previous nodes set when computing shortest path
-		for (Node n = dest; n != null; n = n.previousNode){
-			path.add(n);
-		}
-		
-		//reverse the list so that the first element is the source node
-		Collections.reverse(path);
-		Node[] li = new Node[path.size()];
-		
-		//return the path in array form
-		return path.toArray(li);
-	}
-	
-	
-	/* Performs Dijkstra's algorithm to compute the shortest paths from the source node */
-	public void computePathsFromSource(Node source){
+	public void computeForwardingTables(Node source, Node dest){
 		//since this may be called multiple times for different sources in onion routing, need
 		//to reset the previousNode and minDistance attributes of each node
 		for(int i=0; i < this.graph.nodes.length; i++){
@@ -133,6 +141,18 @@ public class ShortestPath {
 				}
 			}
 		}
+		
+		//use dijkstra's previous nodes to construct forwarding table to destination
+		Node prev = dest;
+		for (Node n = dest; n != null; n = n.previousNode){
+			//path.add(n);	
+			if(n != dest){
+				n.addForwardingTableEntry(dest, prev);
+			}else{
+				n.addForwardingTableEntry(dest, null);
+			}
+			prev = n;
+		}
 	}
 	
 	
@@ -145,6 +165,21 @@ public class ShortestPath {
 			}
 		}
 		return null;
+	}
+	
+	
+	/* Simulates the queueing delay experienced by a node */
+	public double simulateTraffic(){
+		//generate random queuing delay between 0 and 500ms
+		Random rand = new Random();
+		int qDelay = rand.nextInt(500);
+		//simulate the delay by sleeping the program for the link time
+		try {
+			Thread.sleep((long) (qDelay));                 
+		} catch(InterruptedException ex) {
+			Thread.currentThread().interrupt();
+		}
+		return qDelay / 1000;		//qDelay is in ms
 	}
 	
 	
@@ -161,16 +196,15 @@ public class ShortestPath {
 		}
 	}
 	
-	/* Prints the input path node by node */
-	public void printPath(Node[] path){
+	/* Prints the path from source to dest using forwarding tables*/
+	public void printPath(Node source, Node dest){
 		System.out.println("Shortest path:");
-		for(int i=0; i < path.length; i++){
-			System.out.print(path[i].getName() + "(" + path[i].getKey() + ")");
-			if(i != path.length-1){
-				System.out.print(" --> ");
-			}else{
-				System.out.println("");
-			}
+		Node currentNode = source;
+		while(currentNode != dest){
+			System.out.print(currentNode.getName() + "(" + currentNode.getKey() + ") --> ");
+			currentNode = currentNode.getNextNodeFromForwardingTable(dest);
 		}
+		System.out.println(currentNode.getName() + "(" + currentNode.getKey() + ")");
+
 	}
 }

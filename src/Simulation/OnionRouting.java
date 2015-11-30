@@ -1,26 +1,21 @@
 package Simulation;
 
+import graph.Graph;
 import graph.Node;
 import graph.Packet;
 import Simulation.ShortestPath;
 
-import java.security.Key;
 import java.security.PublicKey;
-import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Random;
-
 import javax.crypto.Cipher;
-import javax.crypto.KeyGenerator;
-import javax.crypto.spec.IvParameterSpec;
-
-import sun.misc.BASE64Decoder;
-import sun.misc.BASE64Encoder;
-
-import graph.Graph;
 
 public class OnionRouting {
 	public Graph graph;
+	public final String dataSplitValue1 = ";";		//used to split encrypted data
+	public final String dataReplaceValue1 = "~";
+	public final String dataSplitValue2 = ":";		//used to split encrypted data
+	public final String dataReplaceValue2 = "%";
 	
 	public OnionRouting(Graph graph){
 		this.graph = graph;
@@ -30,119 +25,129 @@ public class OnionRouting {
 	public void startSimulation(Node source, Node destination, String message){
 		Node[] relayNodes = getRelayNodes(source, destination);
 		Packet packet = initializePacket(message, relayNodes, destination);
-		startOnionRouter(source, packet);
+		startOnionRouter(source, packet, relayNodes[0]);
 	}
 	
 	/* Start protocol; the packet only knows the location of the next relay node */
-	public void startOnionRouter(Node source, Packet packet){
-		//compute the shortest paths to all nodes from the source
+	public void startOnionRouter(Node source, Packet packet, Node entryNode){
+		//start processing timer to process first node, to compute forwarding tables for nodes in path
 		long processingStartTime = System.nanoTime();
 		ShortestPath sp = new ShortestPath(this.graph);
-		sp.computePathsFromSource(source);
+		sp.computeForwardingTables(source, entryNode);
 		
-		//compute the shortest path from the source to the first relay node: the entry node
-		Node currentNode = source;
-		Node nextNode = packet.getNextRelayNode();
-		Node[] pathList = sp.getShortestPath(nextNode);
-		
+		//end processing timer
 		long processingEndTime = System.nanoTime();
 		double processingDelay = (processingEndTime - processingStartTime) / 1e9;
 		double processingDelaySum = processingDelay;
-		double nodeCount = 0;
 		double totalTime = processingDelay;
-		System.out.println("\nComputing shortest path from " + currentNode.getName() + "(" + currentNode.getKey() +
-				   ") to " + nextNode.getName() + "(" + nextNode.getKey() + ")");
-
-		sp.printPath(pathList);
 		
-		//the protocol parameters
-		int currentIndex = 0;
+		//display the endpoints of this leg of the path
+		System.out.println("\nComputing shortest path from " + source.getName() + "(" + source.getKey() +
+				   ") to " + entryNode.getName() + "(" + entryNode.getKey() + ")");
+		sp.printPath(source, entryNode);
+		
+		Node currentNode = source;
+		Node nextDest = entryNode;
+		Node nextNode = source.getNextNodeFromForwardingTable(nextDest);
 		byte[] tempEncryptedValue;
 		byte[] tempDecryptedValue;
 		String tempDecryptedString = "";
 		boolean finalTrip = false;
 		String finalMessage = "";
-		
+		double nodeCount = 0;
 		while(true){
-			//try to remove a layer of encryption, since node doesn't know if it is a relay or not
-			currentNode = pathList[currentIndex];
-			nodeCount++;
+			//send packet to to next relay node, or destination
+			while(nextNode != null){
+				totalTime += sp.sendPacketSingleLink(packet, currentNode, nextNode);
+				nodeCount++;
+				currentNode = nextNode;
+				
+				//process intermediate node to get next node in path, and add to timing totals
+				totalTime += sp.simulateTraffic();
+				processingStartTime = System.nanoTime();
+				nextNode = currentNode.getNextNodeFromForwardingTable(nextDest);
+				processingEndTime = System.nanoTime();
+				processingDelay = (processingEndTime - processingStartTime) / 1e9;
+				processingDelaySum += processingDelay;
+				totalTime += processingDelay;
+			}
+			
+			//packet has reached relay node, so start processing timer
+			currentNode = nextDest;
 			processingStartTime = System.nanoTime();
+			
+			//get next layer of encrypted data from stack, null if invalid relay node
 			tempEncryptedValue = packet.getNextEncryptedValueIfValid(currentNode);
 			
 			if(tempEncryptedValue != null){
-				//node is a relay node, so decrypt a layer of packet data
+				//node is a relay node, so decrypt the layer removed
 				tempDecryptedValue = currentNode.decryptMessage(tempEncryptedValue);
 				tempDecryptedString = new String(tempDecryptedValue);
 				
-				//process the decrypted data
-				String[] decryptedData = processPacket(tempDecryptedString);
+				//process the decrypted data to get location of next relay node, or of destination for exit node
+				String[] decryptedData = processPacketData(tempDecryptedString);
 				Integer nextKey = Integer.parseInt(decryptedData[0]);
+				nextDest = getNodeFromKey(nextKey);
+				
+				//compute and get the shortest path from current node to next relay node
+				sp.computeForwardingTables(currentNode, nextDest);
+				
+				//get next node in path to relay node
+				nextNode = currentNode.getNextNodeFromForwardingTable(nextDest);
+				
+				//if current node is the exit node, set the final boolean to true
 				if(decryptedData.length > 1){
 					finalTrip = true;
 					finalMessage = decryptedData[1];
 				}
 				
-				//set the next relay node
-				Node nextRelayNode = getNodeFromKey(nextKey);
-				packet.setNextRelayNode(nextRelayNode);
-				
-				//compute and get the shortest path from current node to next relay node
-				sp.computePathsFromSource(currentNode);
-				
-				//node finished processing, calculate processing delay
-				pathList = sp.getShortestPath(nextRelayNode);
+				//end the processing timer
 				processingEndTime = System.nanoTime();
 				processingDelay = (processingEndTime - processingStartTime) / 1e9;
 				processingDelaySum += processingDelay;
 				totalTime += processingDelay;
 
+				//print results of this leg of the transmission
 				System.out.println(currentNode.getName() + "(" + currentNode.getKey() + 
 						   ") recognized it was a relay node; removed and decrypted data layer, data:\"" + 
 						   tempDecryptedString + "\" processed in " + sp.formatSeconds(processingDelay));
 				
+				//print endpoints for next leg of transmission
 				System.out.println("\nComputing shortest path from " + currentNode.getName() + "(" + currentNode.getKey() +
-								   ") to " + nextRelayNode.getName() + "(" + nextRelayNode.getKey() + ")");
-				sp.printPath(pathList);
-				
-				//reset the path index and send first packet in path
-				currentIndex = 0;
-				nextNode = pathList[currentIndex+1];
-				currentIndex++;
-				totalTime += sp.sendPacket(packet, currentNode, nextNode);
-			}else{
-				//node is not a relay node, so just send the packet to the next node in path
+								   ") to " + nextDest.getName() + "(" + nextDest.getKey() + ")");
+				sp.printPath(currentNode, nextDest);
+			}else if(finalTrip){
+				//at this point, currentNode is the destination, must process the data, so end the processing timer and break loop
+				nodeCount++;
 				processingEndTime = System.nanoTime();
-				processingDelay = (processingEndTime - processingStartTime) / 1e9;
+				processingDelay= (processingEndTime - processingStartTime) / 1e9;
 				processingDelaySum += processingDelay;
 				totalTime += processingDelay;
-				if(finalTrip && currentIndex == pathList.length-1){
-					//the packet has reached the destination
-					break;
-				}
-				nextNode = pathList[currentIndex+1];
-				currentIndex++;
-				totalTime += sp.sendPacket(packet, currentNode, nextNode);	
+				break;
 			}
 		}
+		
+		//compute average processing delay and print results of transmission
 		double averageProcessingDelay = processingDelaySum / (double)nodeCount;
 		System.out.println("Final message received at " + currentNode.getName() + " was \"" + finalMessage + "\" in " + sp.formatSeconds(totalTime));
-		System.out.println("Node count is " + nodeCount + ", average processing delay is " + sp.formatSeconds(averageProcessingDelay));
+		System.out.println("Nodes traversed: " + (int)nodeCount + ", Average processing delay: " + sp.formatSeconds(averageProcessingDelay));
 	}
 	
-	public String[] processPacket(String decryptedString){
+	public String[] processPacketData(String decryptedString){
 		//process the decrypted data to determine the next relay node
-		String[] valueList = decryptedString.split(",");
-		String[] dataList = valueList[0].split(":");
+		String[] valueList = decryptedString.split(dataSplitValue1);
+		String[] dataList = valueList[0].split(dataSplitValue2);
 		String nextKey = dataList[1];
 		String[] retValue;
 		if(valueList.length > 1){
 			//current node is final relay node, so set next "relay node" is the destination
-			String[] messageList = valueList[1].split(":");
-			String finalMessage = messageList[1];
+			String[] messageList = valueList[1].split(dataSplitValue2);
+			
+			//replace the placeholder characters with the chars from the original message (eg my~message%is --> my;message:is)
+			String finalMessage = messageList[1].replace(dataReplaceValue1, dataSplitValue1).replace(dataReplaceValue2, dataSplitValue2);
 			retValue = new String[2];
 			retValue[0] = nextKey;
-			retValue[1] = finalMessage;
+			retValue[1] = finalMessage.replace(dataReplaceValue1, dataSplitValue1);
 		}else{
 			retValue = new String[1];
 			retValue[0] = nextKey;
@@ -159,7 +164,11 @@ public class OnionRouting {
 		
 		//the first thing in the stack is the destination node and unencrypted message
 		relayNodes[2].generateRSAEncryptionKeys();
-		String nextMessage = "next:" + dest.getKey() + ",message:" + message;
+		
+		//replace any instances of ";" or ":" in original message, since those are the chars used for splitting encrypted data
+		String messageToStore = message.replace(dataSplitValue1, dataReplaceValue1);
+		messageToStore = messageToStore.replace(dataSplitValue2, dataReplaceValue2);
+		String nextMessage = "next:" + dest.getKey() + dataSplitValue1 + "message:" + messageToStore;
 		
 		//encrypt the message and store it in the packet's stack
 		byte[] tempMessage = encryptMessage(nextMessage, relayNodes[2].getRSAPublicKey());

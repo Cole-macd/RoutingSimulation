@@ -5,6 +5,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.KeyPair;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import javax.crypto.Cipher;
 
@@ -19,6 +20,7 @@ public class Node implements Comparable<Node> {
     private Integer[] outgoingEdgeKeys;
     private PublicKey publicRSAKey;
     private PrivateKey privateRSAKey;
+    private HashMap<Node,Node> forwardingTable;
     
     public Node(int key, String name, double latitude, double longitude, Integer[] edges) {
         this.name = name;
@@ -27,6 +29,7 @@ public class Node implements Comparable<Node> {
         this.latitude = latitude;
         this.outgoingEdgeObjects = new ArrayList<Edge>();
         this.outgoingEdgeKeys = edges;
+        this.forwardingTable = new HashMap<Node, Node>();
     }
     
     /* Generates a RSA key pair and sets to the class variables */
@@ -54,6 +57,14 @@ public class Node implements Comparable<Node> {
     		return null;
     	}
     	return decryptedText;
+    }
+    
+    public void addForwardingTableEntry(Node dest, Node next){
+    	this.forwardingTable.put(dest, next);
+    }
+    
+    public Node getNextNodeFromForwardingTable(Node dest){
+    	return this.forwardingTable.get(dest);
     }
     
     public PublicKey getRSAPublicKey(){

@@ -77,8 +77,9 @@ public class Packet {
 			
 			//if the decrypted value equals the packet's session key, then this node is allowed to decrypt a data layer
 			//second half of if statement to confirm that only the next relay node, and not just any relay node in the path, can decrypt the next layer
-			if(Arrays.equals(nodeSessionKey, this.sessionKey) && node.equals(this.nextRelayNode)){
+			if(Arrays.equals(nodeSessionKey, this.sessionKey)){
 				valid = true;
+				this.encryptedSessionKeys.remove(i);
 				break;
 			}
 		}

@@ -16,9 +16,11 @@ public class OnionRouting {
 	public final String dataReplaceValue1 = "~";
 	public final String dataSplitValue2 = ":";		//used to split encrypted data
 	public final String dataReplaceValue2 = "%";
+	public Boolean verbose = true;
 	
-	public OnionRouting(Graph graph){
+	public OnionRouting(Graph graph, Boolean verbose){
 		this.graph = graph;
+		this.verbose = verbose;
 	}
 	
 	/* Initializes the packet, chooses the random relay nodes, and starts the protocol */
@@ -29,7 +31,7 @@ public class OnionRouting {
 	}
 	
 	/* Start protocol; the packet only knows the location of the next relay node */
-	public void startOnionRouter(Node source, Packet packet, Node entryNode){
+	public double[] startOnionRouter(Node source, Packet packet, Node entryNode){
 		//start processing timer to process first node, to compute forwarding tables for nodes in path
 		long processingStartTime = System.nanoTime();
 		ShortestPath sp = new ShortestPath(this.graph);
@@ -42,9 +44,11 @@ public class OnionRouting {
 		double totalTime = processingDelay;
 		
 		//display the endpoints of this leg of the path
-		System.out.println("\nComputing shortest path from " + source.getName() + "(" + source.getKey() +
-				   ") to " + entryNode.getName() + "(" + entryNode.getKey() + ")");
-		sp.printPath(source, entryNode);
+		if(this.verbose){
+			System.out.println("\nComputing shortest path from " + source.getName() + "(" + source.getKey() +
+					   ") to " + entryNode.getName() + "(" + entryNode.getKey() + ")");
+			sp.printPath(source, entryNode);
+		}
 		
 		Node currentNode = source;
 		Node nextDest = entryNode;
@@ -107,15 +111,17 @@ public class OnionRouting {
 				processingDelaySum += processingDelay;
 				totalTime += processingDelay;
 
-				//print results of this leg of the transmission
-				System.out.println(currentNode.getName() + "(" + currentNode.getKey() + 
-						   ") recognized it was a relay node; removed and decrypted data layer, data:\"" + 
-						   tempDecryptedString + "\" processed in " + sp.formatSeconds(processingDelay));
-				
-				//print endpoints for next leg of transmission
-				System.out.println("\nComputing shortest path from " + currentNode.getName() + "(" + currentNode.getKey() +
-								   ") to " + nextDest.getName() + "(" + nextDest.getKey() + ")");
-				sp.printPath(currentNode, nextDest);
+				if(this.verbose){
+					//print results of this leg of the transmission
+					System.out.println(currentNode.getName() + "(" + currentNode.getKey() + 
+							   ") recognized it was a relay node; removed and decrypted data layer, data:\"" + 
+							   tempDecryptedString + "\" processed in " + sp.formatSeconds(processingDelay));
+					
+					//print endpoints for next leg of transmission
+					System.out.println("\nComputing shortest path from " + currentNode.getName() + "(" + currentNode.getKey() +
+									   ") to " + nextDest.getName() + "(" + nextDest.getKey() + ")");
+					sp.printPath(currentNode, nextDest);
+				}
 			}else if(finalTrip){
 				//at this point, currentNode is the destination, must process the data, so end the processing timer and break loop
 				nodeCount++;
@@ -129,8 +135,12 @@ public class OnionRouting {
 		
 		//compute average processing delay and print results of transmission
 		double averageProcessingDelay = processingDelaySum / (double)nodeCount;
-		System.out.println("Final message received at " + currentNode.getName() + " was \"" + finalMessage + "\" in " + sp.formatSeconds(totalTime));
-		System.out.println("Nodes traversed: " + (int)nodeCount + ", Average processing delay: " + sp.formatSeconds(averageProcessingDelay));
+		if(this.verbose){
+			System.out.println("Final message received at " + currentNode.getName() + " was \"" + finalMessage + "\" in " + sp.formatSeconds(totalTime));
+			System.out.println("Nodes traversed: " + (int)nodeCount + ", Average processing delay: " + sp.formatSeconds(averageProcessingDelay));
+		}
+		double[] retList = {(double)nodeCount, totalTime, averageProcessingDelay};
+		return retList;
 	}
 	
 	public String[] processPacketData(String decryptedString){
@@ -222,7 +232,9 @@ public class OnionRouting {
 		for(int i=0; i < graph.nodes.length; i++){
 			if(graph.nodes[i].getKey() == nodeKeys[currentIndex]){
 				relayNodes[currentIndex] = graph.nodes[i];
-				System.out.println(graph.nodes[i].getName() + "(" + graph.nodes[i].getKey() + ") chosen as relay node.");
+				if(this.verbose){
+					System.out.println(graph.nodes[i].getName() + "(" + graph.nodes[i].getKey() + ") chosen as relay node.");
+				}
 				currentIndex++;
 				if(currentIndex == 3){
 					break;

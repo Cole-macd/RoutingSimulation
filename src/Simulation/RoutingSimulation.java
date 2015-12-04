@@ -25,45 +25,48 @@ public class RoutingSimulation {
 		System.out.print("Sending message \"" + message + "\" from " +
 						   endPoints[0].getName() + " to " + endPoints[1].getName() +
 						   " using the ");
-		int totalTime = 0;
-		int totalAvgDelay = 0;
-		int totalPathLength = 0;
-		int[] results = new int[3];
+		double totalTime = 0;
+		double totalAvgDelay = 0;
+		double totalPathLength = 0;
+		double[] results = new double[3];
 		Boolean verbose = false;
+		int iterations = 10;
 		if(t == ROUTING_TYPE.ONION){
 			//initialize onion routing simulation
 			System.out.print("onion routing protocol\n");
 			OnionRouting or = new OnionRouting(graph, verbose);
-			for (int i = 0; i < 10000; i++) {
+			ShortestPath sp = new ShortestPath(graph, verbose);
+			for (int i = 0; i < iterations; i++) {
 			    results = or.startSimulation(endPoints[0], endPoints[1], message);
 			    totalPathLength += results[0];
 			    totalTime += results[1];
 			    totalAvgDelay += results[2];
 			}
 			
-			totalPathLength /= 10000;
-			totalAvgDelay /= 10000;
-			totalTime /= 10000;
+			totalPathLength /= iterations;
+			totalAvgDelay /= iterations;
+			totalTime /= iterations;
+			
 			System.out.println("Avg path length is: " + totalPathLength);
-			System.out.println("Avg delay is: " + totalAvgDelay);
-			System.out.println("Avg time is: " + totalTime);
+			System.out.println("Avg delay is: " + sp.formatSeconds(totalAvgDelay));
+			System.out.println("Avg time is: " + sp.formatSeconds(totalTime));
 		}else{
 			//initialize shortest path simulation
 		    System.out.print("shortest path protocol\n");
 		    ShortestPath sp = new ShortestPath(graph, verbose);
-            for (int i = 0; i < 10000; i++) {
+            for (int i = 0; i < iterations; i++) {
                 results = sp.startSimulation(endPoints[0], endPoints[1], message);
                 totalPathLength += results[0];
                 totalTime += results[1];
                 totalAvgDelay += results[2];
             }
             
-            totalPathLength /= 10000;
-            totalAvgDelay /= 10000;
-            totalTime /= 10000;
+            totalPathLength /= iterations;
+            totalAvgDelay /= iterations;
+            totalTime /= iterations;
             System.out.println("Avg path length is: " + totalPathLength);
-            System.out.println("Avg delay is: " + totalAvgDelay);
-            System.out.println("Avg time is: " + totalTime);
+            System.out.println("Avg delay is: " + sp.formatSeconds(totalAvgDelay));
+            System.out.println("Avg time is: " + sp.formatSeconds(totalTime));
 		}
 		
 		/*display distance of every edge

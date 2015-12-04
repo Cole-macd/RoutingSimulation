@@ -25,17 +25,45 @@ public class RoutingSimulation {
 		System.out.print("Sending message \"" + message + "\" from " +
 						   endPoints[0].getName() + " to " + endPoints[1].getName() +
 						   " using the ");
-		
+		int totalTime = 0;
+		int totalAvgDelay = 0;
+		int totalPathLength = 0;
+		int[] results = new int[3];
+		Boolean verbose = false;
 		if(t == ROUTING_TYPE.ONION){
 			//initialize onion routing simulation
 			System.out.print("onion routing protocol\n");
-			OnionRouting or = new OnionRouting(graph);
-			or.startSimulation(endPoints[0], endPoints[1], message);
+			OnionRouting or = new OnionRouting(graph, verbose);
+			for (int i = 0; i < 10000; i++) {
+			    results = or.startSimulation(endPoints[0], endPoints[1], message);
+			    totalPathLength += results[0];
+			    totalTime += results[1];
+			    totalAvgDelay += results[2];
+			}
+			
+			totalPathLength /= 10000;
+			totalAvgDelay /= 10000;
+			totalTime /= 10000;
+			System.out.println("Avg path length is: " + totalPathLength);
+			System.out.println("Avg delay is: " + totalAvgDelay);
+			System.out.println("Avg time is: " + totalTime);
 		}else{
 			//initialize shortest path simulation
-			System.out.print("shortest path protocol\n");
-			ShortestPath sp = new ShortestPath(graph);
-			sp.startSimulation(endPoints[0], endPoints[1], message);
+		    System.out.print("shortest path protocol\n");
+		    ShortestPath sp = new ShortestPath(graph, verbose);
+            for (int i = 0; i < 10000; i++) {
+                results = sp.startSimulation(endPoints[0], endPoints[1], message);
+                totalPathLength += results[0];
+                totalTime += results[1];
+                totalAvgDelay += results[2];
+            }
+            
+            totalPathLength /= 10000;
+            totalAvgDelay /= 10000;
+            totalTime /= 10000;
+            System.out.println("Avg path length is: " + totalPathLength);
+            System.out.println("Avg delay is: " + totalAvgDelay);
+            System.out.println("Avg time is: " + totalTime);
 		}
 		
 		/*display distance of every edge
